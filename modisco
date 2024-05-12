@@ -3,7 +3,6 @@
 # Author: Jacob Schreiber <jmschreiber91@gmail.com>, Ivy Raine <ivy.ember.raine@gmail.com>
 
 from typing import List, Literal, Union
-import pickle
 import h5py
 import hdf5plugin
 import argparse
@@ -148,64 +147,48 @@ def convert_arg_chroms_to_list(chroms: str) -> Union[List[str], Literal['*']]:
 args = parser.parse_args()
 
 if args.cmd == "motifs":
-	# if args.h5py is not None:
-	# 	# Load the scores
-	# 	scores = h5py.File(args.h5py, 'r')
+	if args.h5py is not None:
+		# Load the scores
+		scores = h5py.File(args.h5py, 'r')
 
-	# 	try:
-	# 		center = scores['hyp_scores'].shape[1] // 2
-	# 		start, end = calculate_window_offsets(center, args.window)
+		try:
+			center = scores['hyp_scores'].shape[1] // 2
+			start, end = calculate_window_offsets(center, args.window)
 			
-	# 		attributions = scores['hyp_scores'][:, start:end, :]
-	# 		sequences = scores['input_seqs'][:, start:end, :]
-	# 	except KeyError:
-	# 		center = scores['shap']['seq'].shape[2] // 2
-	# 		start, end = calculate_window_offsets(center, args.window)
+			attributions = scores['hyp_scores'][:, start:end, :]
+			sequences = scores['input_seqs'][:, start:end, :]
+		except KeyError:
+			center = scores['shap']['seq'].shape[2] // 2
+			start, end = calculate_window_offsets(center, args.window)
 			
-	# 		attributions = scores['shap']['seq'][:, :, start:end].transpose(0, 2, 1)
-	# 		sequences = scores['raw']['seq'][:, :, start:end].transpose(0, 2, 1)
+			attributions = scores['shap']['seq'][:, :, start:end].transpose(0, 2, 1)
+			sequences = scores['raw']['seq'][:, :, start:end].transpose(0, 2, 1)
 
-	# 	scores.close()
+		scores.close()
 
-	# else:
-	# 	if args.sequences[-3:] == 'npy':
-	# 		sequences = np.load(args.sequences)
-	# 	elif args.sequences[-3:] == 'npz':
-	# 		sequences = np.load(args.sequences)['arr_0']
-
-	# 	if args.attributions[-3:] == 'npy':
-	# 		attributions = np.load(args.attributions)
-	# 	elif args.attributions[-3:] == 'npz':
-	# 		attributions = np.load(args.attributions)['arr_0']
-
-	# 	center = sequences.shape[2] // 2
-	# 	start, end = calculate_window_offsets(center, args.window)
-
-	# 	sequences = sequences[:, :, start:end].transpose(0, 2, 1)
-	# 	attributions = attributions[:, :, start:end].transpose(0, 2, 1)
-
-	# if sequences.shape[1] < args.window:
-	# 	raise ValueError("Window ({}) cannot be ".format(args.window) +
-	# 		"longer than the sequences".format(sequences.shape))
-
-	# sequences = sequences.astype('float32')
-	# attributions = attributions.astype('float32')
-	
-	# Load
-	if args.sequences[-6:] == 'pickle':
-		with open(args.sequences, 'rb') as f:
-			sequences = pickle.load(f)
 	else:
-		raise ValueError("Sequences must be in pickle format.")
-	
-	if args.attributions[-6:] == 'pickle':
-		with open(args.attributions, 'rb') as f:
-			attributions = pickle.load(f)
-	else:
-		raise ValueError("Attributions must be in pickle format.")
+		if args.sequences[-3:] == 'npy':
+			sequences = np.load(args.sequences)
+		elif args.sequences[-3:] == 'npz':
+			sequences = np.load(args.sequences)['arr_0']
 
-	sequences = [seq.astype('float32') for seq in sequences]
-	attributions = [attr.astype('float32') for attr in attributions]
+		if args.attributions[-3:] == 'npy':
+			attributions = np.load(args.attributions)
+		elif args.attributions[-3:] == 'npz':
+			attributions = np.load(args.attributions)['arr_0']
+
+		center = sequences.shape[2] // 2
+		start, end = calculate_window_offsets(center, args.window)
+
+		sequences = sequences[:, :, start:end].transpose(0, 2, 1)
+		attributions = attributions[:, :, start:end].transpose(0, 2, 1)
+
+	if sequences.shape[1] < args.window:
+		raise ValueError("Window ({}) cannot be ".format(args.window) +
+			"longer than the sequences".format(sequences.shape))
+
+	sequences = sequences.astype('float32')
+	attributions = attributions.astype('float32')
 
 	pos_patterns, neg_patterns = modiscolite.tfmodisco.TFMoDISco(
 		hypothetical_contribs=attributions, 
