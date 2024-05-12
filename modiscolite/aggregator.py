@@ -54,7 +54,7 @@ def _expand_seqlets_to_fill_pattern(pattern, track_set, left_flank_to_add,
 			start = seqlet.start - right_expansion
 			end = seqlet.end + left_expansion
 		
-		if start >= 0 and end <= track_set.length:
+		if start >= 0 and end <= track_set.lengths[seqlet.example_idx]:
 			seqlet = track_set.create_seqlets(
 				seqlets=[core.Seqlet(example_idx=seqlet.example_idx,
 					start=start, end=end, is_revcomp=seqlet.is_revcomp)])[0]
@@ -115,7 +115,7 @@ def merge_in_seqlets_filledges(parent_pattern, seqlets_to_merge,
 			start = seqlet.start - right_expansion
 			end = seqlet.end + left_expansion
 
-		if start >= 0 and end <= track_set.length:
+		if start >= 0 and end <= track_set.lengths[seqlet.example_idx]:
 			seqlet = track_set.create_seqlets(
 				seqlets=[core.Seqlet(example_idx=seqlet.example_idx,
 					start=start, end=end, is_revcomp=seqlet.is_revcomp)])[0] 
@@ -271,7 +271,7 @@ def SimilarPatternsCollapser(patterns, track_set,
 
 				# Filter out bad seqlets
 				pattern2_coords = [seqlet for seqlet in pattern2_coords 
-					if seqlet.start >= 0 and seqlet.end < track_set.length]
+					if seqlet.start >= 0 and seqlet.end < track_set.lengths[seqlet.example_idx]]
 
 				if len(pattern2_coords) == 0:
 					pairwise_sims[i, j] = 0.0

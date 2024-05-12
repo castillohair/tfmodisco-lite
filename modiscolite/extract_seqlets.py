@@ -57,9 +57,9 @@ def _laplacian_null(track, window_size, num_to_samp, random_seed=1234):
 
 
 def _iterative_extract_seqlets(score_track, window_size, flank, suppress):
-	n, d = score_track.shape
 	seqlets = []
 	for example_idx, single_score_track in enumerate(score_track):
+		d = len(single_score_track)
 		while True:
 			argmax = np.argmax(single_score_track, axis=0)
 			max_val = single_score_track[argmax]
@@ -88,8 +88,10 @@ def _iterative_extract_seqlets(score_track, window_size, flank, suppress):
 def _smooth_and_split(tracks, window_size, subsample_cap=1000000):
 	n = len(tracks)
 
-	tracks = np.hstack([np.zeros((n, 1)), np.cumsum(tracks, axis=-1)])
-	tracks = tracks[:, window_size:] - tracks[:, :-window_size]
+	# tracks = np.hstack([np.zeros((n, 1)), np.cumsum(tracks, axis=-1)])
+	# tracks = tracks[:, window_size:] - tracks[:, :-window_size]
+	tracks = [np.concatenate(([0], ti.cumsum())) for ti in tracks]
+	tracks = [ti[window_size:] - ti[:-window_size] for ti in tracks]
 
 	values = np.concatenate(tracks, axis=0)
 	if len(values) > subsample_cap:
@@ -179,14 +181,13 @@ def extract_seqlets(attribution_scores, window_size, flank, suppress,
 	transformed_neg_threshold = np.sign(neg_threshold)*np.searchsorted(
 		a=distribution, v=abs(neg_threshold))/len(distribution)
 
-	idxs = (smoothed_tracks >= pos_threshold) | (smoothed_tracks <= neg_threshold)
-
-	smoothed_tracks[idxs] = np.abs(smoothed_tracks[idxs])
-	smoothed_tracks[~idxs] = -np.inf
-
-	# Filter out the flanks
-	smoothed_tracks[:, :flank] = -np.inf
-	smoothed_tracks[:, -flank:] = -np.inf
+	for si, track in enumerate(smoothed_tracks):
+		idxs = (track >= pos_threshold) | (track <= neg_threshold)
+		smoothed_tracks[si][idxs] = np.abs(track[idxs])
+		smoothed_tracks[si][~idxs] = -np.inf
+		# Filter out the flanks
+		smoothed_tracks[si][:flank] = -np.inf
+		smoothed_tracks[si][-flank:] = -np.inf
 
 	seqlets = _iterative_extract_seqlets(score_track=smoothed_tracks,
 		window_size=window_size,

@@ -18,7 +18,7 @@ class TrackSet(object):
 		self.one_hot = one_hot
 		self.contrib_scores = contrib_scores
 		self.hypothetical_contribs = hypothetical_contribs
-		self.length = len(one_hot[0])
+		self.lengths = [len(x) for x in one_hot]
 
 	def create_seqlets(self, seqlets):
 		for seqlet in seqlets:

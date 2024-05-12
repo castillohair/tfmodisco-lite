@@ -272,14 +272,17 @@ def TFMoDISco(one_hot, hypothetical_contribs, sliding_window_size=21,
 	final_min_cluster_size=20, min_ic_in_window=0.6, min_ic_windowsize=6,
 	ppm_pseudocount=0.001, verbose=False):
 
-	contrib_scores = np.multiply(one_hot, hypothetical_contribs)
+	contrib_scores = [
+		np.multiply(seq_one_hot, seq_hypothetical_contribs)
+		for seq_one_hot, seq_hypothetical_contribs in zip(one_hot, hypothetical_contribs)
+	]
 
 	track_set = core.TrackSet(one_hot=one_hot, 
 		contrib_scores=contrib_scores,
 		hypothetical_contribs=hypothetical_contribs)
 
 	seqlet_coords, threshold = extract_seqlets.extract_seqlets(
-		attribution_scores=contrib_scores.sum(axis=2),
+		attribution_scores=[c.sum(axis=-1) for c in contrib_scores],
 		window_size=sliding_window_size,
 		flank=flank_size,
 		suppress=(int(0.5*sliding_window_size) + flank_size),
