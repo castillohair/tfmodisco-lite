@@ -879,7 +879,7 @@ def TFMoDISco(one_hot, hypothetical_contribs, sliding_window_size=21,
 	prob_and_pertrack_sim_dealbreaker_thresholds=[(0.4, 0.75), (0.2,0.8), (0.1, 0.85), (0.0,0.9)],
 	subcluster_perplexity=50, merging_max_seqlets_subsample=1000,
 	final_min_cluster_size=20, min_ic_in_window=0.6, min_ic_windowsize=6,
-	ppm_pseudocount=0.001, verbose=False):
+	ppm_pseudocount=0.001, verbose=False, lengths=None):
 
 	# Compile the numba kernels in forked children while this runs. The CLI
 	# has already called this before reading its inputs, and a second call
@@ -896,7 +896,8 @@ def TFMoDISco(one_hot, hypothetical_contribs, sliding_window_size=21,
 
 	track_set = core.TrackSet(one_hot=one_hot, 
 		contrib_scores=contrib_scores,
-		hypothetical_contribs=hypothetical_contribs)
+		hypothetical_contribs=hypothetical_contribs,
+		lengths=lengths)
 
 	seqlet_coords, threshold = extract_seqlets.extract_seqlets(
 		attribution_scores=contrib_scores.sum(axis=2),
@@ -906,7 +907,8 @@ def TFMoDISco(one_hot, hypothetical_contribs, sliding_window_size=21,
 		target_fdr=target_seqlet_fdr,
 		min_passing_windows_frac=min_passing_windows_frac,
 		max_passing_windows_frac=max_passing_windows_frac,
-		weak_threshold_for_counting_sign=weak_threshold_for_counting_sign) 
+		weak_threshold_for_counting_sign=weak_threshold_for_counting_sign,
+		lengths=lengths)
 
 	seqlets = track_set.create_seqlets(seqlet_coords) 
 

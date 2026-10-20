@@ -309,33 +309,49 @@ def _refine_thresholds(vals, pos_threshold, neg_threshold,
 
 def extract_seqlets(attribution_scores, window_size, flank, suppress, 
 	target_fdr, min_passing_windows_frac, max_passing_windows_frac, 
-	weak_threshold_for_counting_sign):
+	weak_threshold_for_counting_sign, lengths=None):
+
+	# With `lengths`, each row of attribution_scores is real for its first
+	# lengths[i] positions and padding after. Only windows that lie within
+	# the real positions are used for the null, the thresholds and the
+	# seqlets, in row-major order, as if each row had been cut to its length.
+	valid = None
+	if lengths is not None:
+		n_valid = np.asarray(lengths) - window_size + 1
+		window_idxs = np.arange(attribution_scores.shape[1] - window_size + 1)
+		valid = window_idxs[None, :] < n_valid[:, None]
 
 	# _smooth_and_split's values, computed in another order. The indices of
 	# its subsample depend only on the number of windows, so they are found
 	# in a forked child while this process estimates the null. Every value
 	# is computed as before.
 	subsample_cap = 1000000
-	n_windows = _n_windows(attribution_scores, window_size)
+	if valid is None:
+		n_windows = _n_windows(attribution_scores, window_size)
+	else:
+		n_windows = int(valid.sum())
 	indices = None
 	if n_windows is not None and n_windows > subsample_cap:
 		indices = _ForkedSubsampleIndices(n_windows, subsample_cap)
 
 	try:
 		smoothed_tracks = _smooth(attribution_scores, window_size)
+		valid_tracks = (smoothed_tracks if valid is None
+			else smoothed_tracks[valid])
 
 		pos_null_values, neg_null_values = _laplacian_null(
-			track=smoothed_tracks, window_size=window_size, num_to_samp=10000)
+			track=valid_tracks, window_size=window_size, num_to_samp=10000)
 
 		# _laplacian_null has raised on any NaN or inf in the tracks, and
 		# np.abs leaves no -0.0, so equal values have equal bits and an
 		# in-place sort gives exactly the array sorted() gave, in a small
 		# fraction of the time.
-		distribution = np.abs(smoothed_tracks).ravel()
+		distribution = np.abs(valid_tracks).ravel()
 		distribution.sort()
 
 		# The values np.concatenate(smoothed_tracks, axis=0) gave, uncopied.
-		values = smoothed_tracks.ravel()
+		values = valid_tracks.ravel()
+		del valid_tracks
 		if len(values) > subsample_cap:
 			if indices is not None and len(values) == n_windows:
 				values = values[indices.result()]
@@ -375,6 +391,10 @@ def extract_seqlets(attribution_scores, window_size, flank, suppress,
 	# Filter out the flanks
 	smoothed_tracks[:, :flank] = -np.inf
 	smoothed_tracks[:, -flank:] = -np.inf
+
+	# and, with `lengths`, the windows past each row's real end and its flank
+	if valid is not None:
+		smoothed_tracks[window_idxs[None, :] >= (n_valid - flank)[:, None]] = -np.inf
 
 	seqlets = _iterative_extract_seqlets(score_track=smoothed_tracks,
 		window_size=window_size,

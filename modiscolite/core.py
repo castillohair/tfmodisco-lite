@@ -14,11 +14,20 @@ from . import util
 from collections import OrderedDict
 
 class TrackSet(object):
-	def __init__(self, one_hot, contrib_scores, hypothetical_contribs):
+	def __init__(self, one_hot, contrib_scores, hypothetical_contribs,
+		lengths=None):
 		self.one_hot = one_hot
 		self.contrib_scores = contrib_scores
 		self.hypothetical_contribs = hypothetical_contribs
 		self.length = len(one_hot[0])
+
+		# The number of real positions at the start of each example; the
+		# rest is padding that no seqlet may reach. Python ints, since the
+		# bounds checks index them one seqlet at a time.
+		if lengths is None:
+			self.lengths = [self.length] * len(one_hot)
+		else:
+			self.lengths = [int(length) for length in lengths]
 
 	def create_seqlets(self, seqlets):
 		for seqlet in seqlets:

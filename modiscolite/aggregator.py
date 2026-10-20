@@ -194,7 +194,7 @@ def _expand_seqlets_to_fill_pattern(pattern, track_set, left_flank_to_add,
 			start = seqlet.start - right_expansion
 			end = seqlet.end + left_expansion
 		
-		if start >= 0 and end <= track_set.length:
+		if start >= 0 and end <= track_set.lengths[seqlet.example_idx]:
 			new_seqlets.append(core.Seqlet(example_idx=seqlet.example_idx,
 				start=start, end=end, is_revcomp=seqlet.is_revcomp))
 
@@ -232,13 +232,13 @@ def _expand_seqlets_to_fill_pattern(pattern, track_set, left_flank_to_add,
 _NOT_APPLICABLE = object()
 
 
-def _expanded(entries, length, track_length, left, right):
+def _expanded(entries, length, track_lengths, left, right):
 	"""The seqlets that _expand_seqlets_to_fill_pattern makes from a pattern
 	`length` long holding `entries` (Seqlet objects, or the tuples of a
 	shell, which span it), as SeqletSet keeps them: (kept, unique, all_kept),
 	the coordinate tuples kept, the dict from each one's string to it, and
-	whether every entry was kept (none fell off the track or repeated a
-	string)."""
+	whether every entry was kept (none fell off its example's real length,
+	track_lengths[example_idx], or repeated a string)."""
 
 	kept, unique = [], {}
 	for entry in entries:
@@ -258,7 +258,7 @@ def _expanded(entries, length, track_length, left, right):
 			start = start - right_expansion
 			end = end + left
 
-		if start >= 0 and end <= track_length:
+		if start >= 0 and end <= track_lengths[example_idx]:
 			key = f"{example_idx!s}_{start!s}_{end!s}"
 			if key not in unique:
 				coordinates = (example_idx, start, end, is_revcomp)
@@ -403,7 +403,7 @@ def _expand_shell(pattern, track_set, left_flank_to_add, right_flank_to_add,
 
 	length = len(pattern)
 	kept, unique, all_kept = _expanded(pattern.seqlets, length,
-		track_set.length, left_flank_to_add, right_flank_to_add)
+		track_set.lengths, left_flank_to_add, right_flank_to_add)
 	if not kept:
 		return None
 
@@ -437,7 +437,7 @@ def _polish_coordinates(pattern, min_frac, min_num, track_set, flank,
 	kept, _, _ = _trimmed(pattern.seqlets, start_idx, end_idx)
 	length = len(core.Seqlet(*kept[0]))
 
-	kept, unique, _ = _expanded(kept, length, track_set.length, flank, flank)
+	kept, unique, _ = _expanded(kept, length, track_set.lengths, flank, flank)
 	if not kept:
 		return None
 
@@ -464,7 +464,7 @@ def _polish_coordinates(pattern, min_frac, min_num, track_set, flank,
 	kept, _, trim_kept = _trimmed(expanded.seqlets, start_idx, end_idx)
 	length = len(core.Seqlet(*kept[0]))
 
-	kept, unique, all_kept = _expanded(kept, length, track_set.length, flank,
+	kept, unique, all_kept = _expanded(kept, length, track_set.lengths, flank,
 		flank)
 	if not kept:
 		return None
@@ -632,7 +632,7 @@ def merge_in_seqlets_filledges(parent_pattern, seqlets_to_merge,
 			start = seqlet.start - right_expansion
 			end = seqlet.end + left_expansion
 
-		if start >= 0 and end <= track_set.length:
+		if start >= 0 and end <= track_set.lengths[seqlet.example_idx]:
 			seqlet = track_set.create_seqlets(
 				seqlets=[core.Seqlet(example_idx=seqlet.example_idx,
 					start=start, end=end, is_revcomp=seqlet.is_revcomp)])[0] 
@@ -953,7 +953,8 @@ def _pair_map(patterns, subsample_patterns, pattern1_cache, pairs, track_set,
 
 		# Filter out bad seqlets
 		pattern2_coords = [seqlet for seqlet in pattern2_coords
-			if seqlet.start >= 0 and seqlet.end < track_set.length]
+			if seqlet.start >= 0
+			and seqlet.end < track_set.lengths[seqlet.example_idx]]
 
 		if len(pattern2_coords) == 0:
 			return 0.0, 0.5
